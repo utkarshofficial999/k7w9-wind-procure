@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { AlertCircle, ArrowUpRight, ArrowDownRight, Info } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, ArrowDownRight, Info, ArrowUpDown, Clock } from 'lucide-react';
+import { GlossaryTooltip } from './Glossary';
 
-export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
+export default function DayAheadView({ dayData, selectedDate, cutoffHour, mode = 'beginner' }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [isHoveringPeak, setIsHoveringPeak] = useState(false);
+  const [sortByMiss, setSortByMiss] = useState(false);
 
   if (!dayData || !dayData.timeSeries || dayData.timeSeries.length === 0) {
     return (
@@ -16,6 +19,13 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
   const series = dayData.timeSeries;
   const minVal = Math.min(...series.map((d) => Math.min(d.actualMW, d.forecastMW)));
   const maxVal = Math.max(...series.map((d) => Math.max(d.actualMW, d.forecastMW)));
+
+  // Auto-generated data-driven headline (Requirement 6)
+  const biggestMissPoint = series.reduce((max, pt) => (Math.abs(pt.errorMW) > Math.abs(max.errorMW) ? pt : max), series[0]);
+  const missHour = new Date(biggestMissPoint.startTime).getUTCHours();
+  const missHourStr = `${String(missHour).padStart(2, '0')}:00`;
+  const isOver = biggestMissPoint.errorMW > 0;
+  const chartHeadline = `At ${missHourStr} the forecast was ${Math.round(Math.abs(biggestMissPoint.errorMW)).toLocaleString()} MW ${isOver ? 'too high' : 'too low'}.`;
 
   // Y-axis starts at rounded minimum: floor to nearest 1,000 MW below min of actual and forecast
   let yMin = Math.floor(minVal / 1000) * 1000;
@@ -40,9 +50,9 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
     yTicks.push(v);
   }
 
-  const chartHeight = 300;
+  const chartHeight = 310;
   const chartWidth = 920;
-  const padding = { top: 30, right: 30, bottom: 45, left: 85 };
+  const padding = { top: 35, right: mode === 'beginner' ? 85 : 35, bottom: 45, left: 85 };
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -59,43 +69,61 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
     .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.forecastMW)}`)
     .join(' ');
 
+  // Gap polygon between forecast and actual (Requirement 6)
+  const gapPolygonPoints = [
+    ...series.map((d, i) => `${getX(i)},${getY(d.forecastMW)}`),
+    ...series.slice().reverse().map((d, i) => `${getX(series.length - 1 - i)},${getY(d.actualMW)}`)
+  ].join(' ');
+
   // Actual area fill down to baseline (yMin)
   const actualArea = `${actualPath} L ${getX(series.length - 1)} ${padding.top + innerHeight} L ${getX(0)} ${padding.top + innerHeight} Z`;
 
   const hoveredPoint = hoveredIndex !== null ? series[hoveredIndex] : null;
 
+  // Sorted rows for table (Requirement 7)
+  const displayedRows = sortByMiss
+    ? [...series].sort((a, b) => Math.abs(b.errorMW) - Math.abs(a.errorMW))
+    : series;
+
   return (
-    <div className="dayahead-container">
+    <div className="dayahead-container" id="tour-chart">
       {/* Chart Section */}
       <div className="chart-card glass-panel">
         <div className="chart-header">
           <div>
-            <div className="chart-tag">DAY-AHEAD PROCUREMENT DISPATCH</div>
+            <div className="chart-tag">
+              {mode === 'beginner' ? 'HOURLY COMPARISON' : 'DAY-AHEAD PROCUREMENT DISPATCH'}
+            </div>
+            {/* Auto-generated data-driven headline (Requirement 6) */}
             <h2 className="chart-title">
-              Delivery Profile: {selectedDate}
+              {chartHeadline}
               <span className="chart-subtitle">
-                (Cutoff: {dayData.decisionCutoffUsed})
+                (Delivery: {selectedDate} • Cutoff: {dayData.decisionCutoffUsed})
               </span>
             </h2>
           </div>
-          <div className="chart-legend">
-            <div className="legend-item">
-              <span className="legend-line line-green"></span>
-              <span>Actual Generation (MW)</span>
+
+          {/* Expert mode shows full box legend; Beginner mode has direct line labels */}
+          {mode === 'expert' && (
+            <div className="chart-legend">
+              <div className="legend-item">
+                <span className="legend-line line-green"></span>
+                <span>Actual Generation (MW)</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-line line-purple"></span>
+                <span>Day-Ahead Forecast (MW)</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-box box-rose"></span>
+                <span>Deficit Risk (Over-forecast)</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-box box-amber"></span>
+                <span>Surplus (Under-forecast)</span>
+              </div>
             </div>
-            <div className="legend-item">
-              <span className="legend-line line-purple"></span>
-              <span>Day-Ahead Forecast (MW)</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-box box-rose"></span>
-              <span>Deficit Risk (Over-forecast)</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-box box-amber"></span>
-              <span>Surplus (Under-forecast)</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Interactive SVG Chart */}
@@ -103,16 +131,19 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
           <svg 
             viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
             className="interactive-svg"
-            onMouseLeave={() => setHoveredIndex(null)}
+            onMouseLeave={() => {
+              setHoveredIndex(null);
+              setIsHoveringPeak(false);
+            }}
           >
             <defs>
               <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.18" />
                 <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
-            {/* Peak Hours Background Highlight (07:00 to 19:00 UTC) with Updated Label */}
+            {/* Peak Hours Background Highlight (07:00 to 19:00 UTC) */}
             <rect
               x={getX(7)}
               y={padding.top}
@@ -121,17 +152,23 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               fill="rgba(245, 158, 11, 0.08)"
               stroke="rgba(245, 158, 11, 0.3)"
               strokeDasharray="4 4"
+              onMouseEnter={() => setIsHoveringPeak(true)}
+              onMouseLeave={() => setIsHoveringPeak(false)}
             />
-            <text
-              x={getX(13)}
-              y={padding.top + 16}
-              fill="#b45309"
-              fontSize="11"
-              fontWeight="700"
-              textAnchor="middle"
-            >
-              Peak 07:00-19:00 UTC (winter/GMT mapping)
-            </text>
+
+            {/* Peak Label: Always in Expert, shown on hover in Beginner (Requirement 6) */}
+            {(mode === 'expert' || isHoveringPeak || (hoveredPoint && hoveredPoint.isPeak)) && (
+              <text
+                x={getX(13)}
+                y={padding.top + 16}
+                fill="#b45309"
+                fontSize="11"
+                fontWeight="700"
+                textAnchor="middle"
+              >
+                Peak 07:00-19:00 UTC (winter/GMT mapping)
+              </text>
+            )}
 
             {/* Grid Lines with Even Tick Steps */}
             {yTicks.map((yVal, idx) => {
@@ -185,7 +222,15 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
             {/* Area Fill for Actuals */}
             <path d={actualArea} fill="url(#actualGrad)" />
 
-            {/* Actual Curve */}
+            {/* Shaded Gap Between Forecast and Actual (Requirement 6) */}
+            <polygon
+              points={gapPolygonPoints}
+              fill="rgba(225, 29, 72, 0.16)"
+              stroke="rgba(225, 29, 72, 0.25)"
+              strokeWidth="0.5"
+            />
+
+            {/* Actual Curve (Green) */}
             <path
               d={actualPath}
               fill="none"
@@ -195,7 +240,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               strokeLinejoin="round"
             />
 
-            {/* Forecast Curve */}
+            {/* Forecast Curve (Purple Dashed) */}
             <path
               d={forecastPath}
               fill="none"
@@ -206,10 +251,33 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               strokeLinejoin="round"
             />
 
+            {/* Direct Line Labels in Beginner Mode (Requirement 6) */}
+            {mode === 'beginner' && (
+              <g className="direct-line-labels">
+                <text
+                  x={getX(series.length - 1) + 8}
+                  y={getY(series[series.length - 1].forecastMW) + 4}
+                  fill="#4f46e5"
+                  fontSize="12"
+                  fontWeight="700"
+                >
+                  Forecast
+                </text>
+                <text
+                  x={getX(series.length - 1) + 8}
+                  y={getY(series[series.length - 1].actualMW) + 4}
+                  fill="#059669"
+                  fontSize="12"
+                  fontWeight="700"
+                >
+                  Actual
+                </text>
+              </g>
+            )}
+
             {/* Interactive Points & Vertical Slices */}
             {series.map((d, i) => (
               <g key={i}>
-                {/* Invisible hover zone */}
                 <rect
                   x={getX(i) - innerWidth / (series.length * 2)}
                   y={padding.top}
@@ -220,7 +288,6 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                   style={{ cursor: 'pointer' }}
                 />
 
-                {/* Point markers */}
                 <circle
                   cx={getX(i)}
                   cy={getY(d.actualMW)}
@@ -297,88 +364,176 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
             </div>
           )}
         </div>
+
+        {/* Shaded Gap Caption (Requirement 6) */}
+        <div className="chart-gap-caption">
+          <span className="gap-color-box"></span>
+          <span>Red gap = power you expected but didn't get.</span>
+        </div>
       </div>
 
-      {/* Hourly Detail Table */}
+      {/* Hourly Detail Table (Requirement 7) */}
       <div className="table-card glass-panel">
         <div className="table-header-row">
           <div>
-            <h3 className="section-title">Hourly Settlement Breakdown & Market Action</h3>
+            <h3 className="section-title">
+              {mode === 'beginner' ? 'Hourly Performance Summary' : 'Hourly Settlement Breakdown & Market Action'}
+            </h3>
             <p className="section-desc">
-              Resolution: 24 Delivery Hours (Aligned with Elexon BMRS Settlement Periods 1 to 48)
+              {mode === 'beginner' 
+                ? 'Check whether your day-ahead power purchase fell short, was balanced, or had surplus energy.' 
+                : 'Resolution: 24 Delivery Hours (Aligned with Elexon BMRS Settlement Periods 1 to 48)'}
             </p>
           </div>
-          <div className="table-stats-badge">
-            24 Trading Intervals | Daily MAE: <strong>{dayData.metrics.maeMW} MW</strong>
+
+          <div className="table-actions-right">
+            {/* Sort by biggest miss toggle (Requirement 7) */}
+            <button
+              className={`sort-miss-btn ${sortByMiss ? 'active' : ''}`}
+              onClick={() => setSortByMiss(!sortByMiss)}
+              title="Sort rows by largest forecast miss"
+            >
+              <ArrowUpDown size={14} />
+              <span>{sortByMiss ? 'Sorted: Biggest Miss First' : 'Sort by biggest miss'}</span>
+            </button>
+            <div className="table-stats-badge">
+              24 Intervals | MAE: <strong>{dayData.metrics.maeMW} MW</strong>
+            </div>
           </div>
         </div>
 
+        {/* Beginner Verdict Legend (Requirement 7) */}
+        {mode === 'beginner' && (
+          <div className="table-verdict-legend">
+            <span className="legend-lbl">Verdict Legend:</span>
+            <span className="verdict-chip-mini deficit">Bought too little (Shortfall &gt; 300 MW)</span>
+            <span className="verdict-chip-mini balanced">About right (Within ±300 MW)</span>
+            <span className="verdict-chip-mini surplus">Bought too much (Surplus &gt; 300 MW)</span>
+          </div>
+        )}
+
         <div className="table-responsive">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Delivery Hour</th>
-                <th>Settlement Periods</th>
-                <th>Market Period</th>
-                <th>Actual Generation</th>
-                <th>Day-Ahead Forecast</th>
-                <th>Forecast Error (MW)</th>
-                <th>% Error</th>
-                <th>Procurement Implication</th>
-              </tr>
-            </thead>
-            <tbody>
-              {series.map((row, i) => {
-                const hour = new Date(row.startTime).getUTCHours();
-                const isOver = row.errorMW > 0;
-                return (
-                  <tr key={i} className={hoveredIndex === i ? 'row-active' : ''}>
-                    <td className="font-mono">
-                      {String(hour).padStart(2, '0')}:00 - {String(hour + 1).padStart(2, '0')}:00 UTC
-                    </td>
-                    <td className="font-mono text-muted">
-                      SP {row.settlementPeriod} & {row.settlementPeriod + 1}
-                    </td>
-                    <td>
-                      {row.isPeak ? (
-                        <span className="badge-peak-pill">Peak</span>
-                      ) : (
-                        <span className="badge-offpeak-pill">Off-Peak</span>
-                      )}
-                    </td>
-                    <td className="font-mono text-green font-semibold">
-                      {row.actualMW.toLocaleString()} MW
-                    </td>
-                    <td className="font-mono text-purple font-semibold">
-                      {row.forecastMW.toLocaleString()} MW
-                    </td>
-                    <td className="font-mono font-semibold">
-                      <span className={isOver ? 'text-rose' : 'text-amber'}>
-                        {isOver ? `+${row.errorMW.toLocaleString()}` : row.errorMW.toLocaleString()} MW
-                      </span>
-                    </td>
-                    <td className="font-mono text-muted">
-                      {row.percentageError !== null ? `${row.percentageError}%` : 'N/A'}
-                    </td>
-                    <td>
-                      {isOver ? (
-                        <span className="risk-indicator deficit">
-                          <ArrowUpRight size={14} /> Under-procured ({row.errorMW.toFixed(0)} MW Deficit)
+          {mode === 'beginner' ? (
+            /* BEGINNER MODE TABLE (Requirement 7): Hour | Actual | Forecast | Miss | Verdict */
+            <table className="custom-table beginner-table">
+              <thead>
+                <tr>
+                  <th>Hour</th>
+                  <th>Actual Wind</th>
+                  <th>Forecast Wind</th>
+                  <th>Miss Size</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedRows.map((row, i) => {
+                  const hour = new Date(row.startTime).getUTCHours();
+                  const miss = row.errorMW;
+                  
+                  let verdictText = 'About right';
+                  let verdictClass = 'balanced';
+                  if (miss > 300) {
+                    verdictText = 'Bought too little';
+                    verdictClass = 'deficit';
+                  } else if (miss < -300) {
+                    verdictText = 'Bought too much';
+                    verdictClass = 'surplus';
+                  }
+
+                  return (
+                    <tr key={i}>
+                      <td className="font-mono">
+                        {String(hour).padStart(2, '0')}:00 UTC
+                      </td>
+                      <td className="font-mono text-green font-semibold">
+                        {row.actualMW.toLocaleString()} MW
+                      </td>
+                      <td className="font-mono text-purple font-semibold">
+                        {row.forecastMW.toLocaleString()} MW
+                      </td>
+                      <td className="font-mono font-semibold">
+                        <span className={miss > 0 ? 'text-rose' : 'text-amber'}>
+                          {miss > 0 ? `+${miss.toLocaleString()}` : miss.toLocaleString()} MW
                         </span>
-                      ) : (
-                        <span className="risk-indicator surplus">
-                          <ArrowDownRight size={14} /> Over-procured ({Math.abs(row.errorMW).toFixed(0)} MW Surplus)
+                      </td>
+                      <td>
+                        <span className={`verdict-chip ${verdictClass}`}>
+                          {verdictText}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            /* EXPERT MODE TABLE: Full columns */
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Delivery Hour</th>
+                  <th>Settlement Periods</th>
+                  <th>Market Period</th>
+                  <th>Actual Generation</th>
+                  <th>Day-Ahead Forecast</th>
+                  <th>Forecast Error (MW)</th>
+                  <th>% Error</th>
+                  <th>Procurement Implication</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedRows.map((row, i) => {
+                  const hour = new Date(row.startTime).getUTCHours();
+                  const isOverRow = row.errorMW > 0;
+                  return (
+                    <tr key={i} className={hoveredIndex === i ? 'row-active' : ''}>
+                      <td className="font-mono">
+                        {String(hour).padStart(2, '0')}:00 - {String(hour + 1).padStart(2, '0')}:00 UTC
+                      </td>
+                      <td className="font-mono text-muted">
+                        SP {row.settlementPeriod} & {row.settlementPeriod + 1}
+                      </td>
+                      <td>
+                        {row.isPeak ? (
+                          <span className="badge-peak-pill">Peak</span>
+                        ) : (
+                          <span className="badge-offpeak-pill">Off-Peak</span>
+                        )}
+                      </td>
+                      <td className="font-mono text-green font-semibold">
+                        {row.actualMW.toLocaleString()} MW
+                      </td>
+                      <td className="font-mono text-purple font-semibold">
+                        {row.forecastMW.toLocaleString()} MW
+                      </td>
+                      <td className="font-mono font-semibold">
+                        <span className={isOverRow ? 'text-rose' : 'text-amber'}>
+                          {isOverRow ? `+${row.errorMW.toLocaleString()}` : row.errorMW.toLocaleString()} MW
+                        </span>
+                      </td>
+                      <td className="font-mono text-muted">
+                        {row.percentageError !== null ? `${row.percentageError}%` : 'N/A'}
+                      </td>
+                      <td>
+                        {isOverRow ? (
+                          <span className="risk-indicator deficit">
+                            <ArrowUpRight size={14} /> Under-procured ({row.errorMW.toFixed(0)} MW Deficit)
+                          </span>
+                        ) : (
+                          <span className="risk-indicator surplus">
+                            <ArrowDownRight size={14} /> Over-procured ({Math.abs(row.errorMW).toFixed(0)} MW Surplus)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        {/* Footnote on SP-to-Hour mapping and winter/GMT vs BST */}
+        {/* Footnote on SP-to-Hour mapping */}
         <div className="table-settlement-footnote">
           <Info size={14} className="footnote-icon" />
           <span>

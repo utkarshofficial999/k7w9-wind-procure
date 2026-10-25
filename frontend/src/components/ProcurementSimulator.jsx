@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, DollarSign, Zap, Sliders, CheckCircle2, Calculator, Info } from 'lucide-react';
+import { Shield, DollarSign, Zap, Sliders, CheckCircle2, Calculator, Info, AlertTriangle } from 'lucide-react';
 import { simulateProcurement } from '../services/api';
+import { GlossaryTooltip } from './Glossary';
 
-export default function ProcurementSimulator({ cutoffHour, defaultMonthlyP90 = 4312.4 }) {
+export default function ProcurementSimulator({ cutoffHour, defaultMonthlyP90 = 4312.4, mode = 'beginner' }) {
   const [demandMW, setDemandMW] = useState(20000);
   const [strategy, setStrategy] = useState('P90'); // Default to Monthly P90
   const [customBuffer, setCustomBuffer] = useState(2500);
-  const [penaltySpread, setPenaltySpread] = useState(85); // Default £85/MWh sensible default
+  const [penaltySpread, setPenaltySpread] = useState(85); // Default £85/MWh
   const [simResult, setSimResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +42,147 @@ export default function ProcurementSimulator({ cutoffHour, defaultMonthlyP90 = 4
   const hedgedVolumeTWh = hedgedVolumeMWh / 1_000_000;
   const liveSavingsGBP = simResult ? hedgedVolumeMWh * penaltySpread : 0;
 
+  // ==================== BEGINNER 3-STEP FLOW (Requirement 8) ====================
+  if (mode === 'beginner') {
+    const isPlayingSafe = strategy !== 'None';
+
+    return (
+      <div className="simulator-container glass-panel">
+        <div className="simulator-header">
+          <div>
+            <div className="chart-tag">SIMPLE PROCUREMENT GUIDE</div>
+            <h3 className="section-title">How Much Extra Power Should I Buy?</h3>
+            <p className="section-desc">
+              Calculate the smart safety <GlossaryTooltip termKey="Buffer">buffer</GlossaryTooltip> to protect your utility against wind shortfall <GlossaryTooltip termKey="cashout">penalties</GlossaryTooltip>.
+            </p>
+          </div>
+          <div className="header-badge-container">
+            <span className="badge-illustrative">Estimate</span>
+          </div>
+        </div>
+
+        <div className="beginner-flow-grid">
+          {/* Step 1: Enter your demand */}
+          <div className="flow-card">
+            <div className="flow-step-num">Step 1</div>
+            <h4 className="flow-title">Enter your consumer demand</h4>
+            <p className="flow-desc">How much total power do your consumers need?</p>
+            <div className="flow-input-box">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-muted text-xs">Target Demand:</span>
+                <strong className="font-mono text-cyan text-base">{demandMW.toLocaleString()} MW</strong>
+              </div>
+              <input
+                type="range"
+                min="10000"
+                max="35000"
+                step="1000"
+                value={demandMW}
+                onChange={(e) => setDemandMW(Number(e.target.value))}
+                className="sim-slider"
+              />
+              <div className="sim-slider-ticks">
+                <span>10k MW</span>
+                <span>20k MW (Typical)</span>
+                <span>35k MW</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Choose your strategy */}
+          <div className="flow-card">
+            <div className="flow-step-num">Step 2</div>
+            <h4 className="flow-title">Choose your approach</h4>
+            <p className="flow-desc">Trust the weather forecast or play safe?</p>
+            <div className="flow-choices">
+              <button
+                className={`choice-card ${strategy === 'None' ? 'active danger' : ''}`}
+                onClick={() => setStrategy('None')}
+              >
+                <div className="choice-header">
+                  <AlertTriangle size={16} className="text-amber" />
+                  <strong>Trust the forecast</strong>
+                </div>
+                <p className="choice-sub">0 MW buffer. Zero protection against forecast errors.</p>
+              </button>
+
+              <button
+                className={`choice-card ${strategy === 'P90' ? 'active safe' : ''}`}
+                onClick={() => setStrategy('P90')}
+              >
+                <div className="choice-header">
+                  <Shield size={16} className="text-green" />
+                  <strong>Play safe (recommended)</strong>
+                </div>
+                <p className="choice-sub">
+                  Adds +{Math.round(defaultMonthlyP90).toLocaleString()} MW buffer. Covers 90% of deficit risk.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Step 3: See result in plain words */}
+          <div className="flow-card result-flow-card">
+            <div className="flow-step-num">Step 3</div>
+            <div className="flex justify-between items-center">
+              <h4 className="flow-title">Recommended Action</h4>
+              <span className="badge-mini-illustrative">Estimate</span>
+            </div>
+            
+            {loading ? (
+              <div className="flow-loading">Calculating protection...</div>
+            ) : simResult ? (
+              <div className="flow-result-content">
+                {strategy === 'None' ? (
+                  <div className="flow-plain-result alert">
+                    <p className="plain-result-text">
+                      <strong>You are trusting the raw forecast.</strong> If wind collapses as it did across January, you will face unhedged cashout penalties on about <strong>{Math.round(simResult.unhedgedDeficitMWh).toLocaleString()} MWh</strong> of missing power!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flow-plain-result success">
+                    {/* Requirement 8 Exact Quote Pattern */}
+                    <p className="plain-result-text">
+                      <strong>Playing safe</strong> means buying <strong>{Math.round(simResult.appliedBufferMW).toLocaleString()} MW</strong> more <GlossaryTooltip termKey="Thermal">thermal power</GlossaryTooltip> and avoiding about <strong>£{(liveSavingsGBP / 1_000_000).toFixed(1)} Million</strong> of last-minute costs.
+                    </p>
+                    <div className="plain-result-meta">
+                      <span>Protected Volume: <strong>{(hedgedVolumeMWh / 1000).toFixed(0)} GWh ({hedgedVolumeTWh.toFixed(3)} TWh)</strong></span>
+                      <span>Total Avoided Cashout: <strong>£{Math.round(liveSavingsGBP).toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Editable Price Assumption */}
+                <div className="flow-price-assumption">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-muted">Cashout price assumption:</span>
+                    <div className="editable-price-wrapper">
+                      <span>£</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="500"
+                        value={penaltySpread}
+                        onChange={(e) => setPenaltySpread(Math.max(0, Number(e.target.value)))}
+                        className="editable-price-input"
+                        aria-label="Cashout price assumption in pounds per MWh"
+                      />
+                      <span className="unit-label">/MWh</span>
+                    </div>
+                  </div>
+                  <span className="text-muted text-xs block">
+                    UK winter balancing cashout spread typically averages £85/MWh.
+                  </span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== EXPERT MODE VIEW ====================
   return (
     <div className="simulator-container glass-panel">
       <div className="simulator-header">
