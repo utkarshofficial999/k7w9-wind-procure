@@ -17,8 +17,9 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
   const maxGen = Math.max(...series.map((d) => Math.max(d.actualMW, d.forecastMW)), 1000);
   const chartHeight = 280;
   const chartWidth = 900;
-  const padding = { top: 20, right: 30, bottom: 40, left: 60 };
+  const padding = { top: 25, right: 30, bottom: 40, left: 80 };
   const innerWidth = chartWidth - padding.left - padding.right;
+
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
   // Scales
@@ -82,7 +83,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
           >
             <defs>
               <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
                 <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
               </linearGradient>
             </defs>
@@ -93,18 +94,17 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               y={padding.top}
               width={getX(19) - getX(7)}
               height={innerHeight}
-              fill="rgba(245, 158, 11, 0.06)"
-              stroke="rgba(245, 158, 11, 0.15)"
+              fill="rgba(245, 158, 11, 0.08)"
+              stroke="rgba(245, 158, 11, 0.3)"
               strokeDasharray="4 4"
             />
             <text
               x={getX(13)}
               y={padding.top + 15}
-              fill="#f59e0b"
+              fill="#b45309"
               fontSize="11"
-              fontWeight="600"
+              fontWeight="700"
               textAnchor="middle"
-              opacity="0.8"
             >
               UK DAY-AHEAD PEAK PERIOD (07:00 - 19:00 UTC)
             </text>
@@ -120,7 +120,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                     y1={yPos}
                     x2={padding.left + innerWidth}
                     y2={yPos}
-                    stroke="rgba(255, 255, 255, 0.07)"
+                    stroke="#e2e8f0"
                     strokeDasharray="3 3"
                   />
                   <text
@@ -146,9 +146,10 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                     key={i}
                     x={getX(i)}
                     y={padding.top + innerHeight + 20}
-                    fill="#94a3b8"
+                    fill="#475569"
                     fontSize="11"
                     fontFamily="monospace"
+                    fontWeight="500"
                     textAnchor="middle"
                   >
                     {String(hour).padStart(2, '0')}:00
@@ -165,7 +166,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
             <path
               d={actualPath}
               fill="none"
-              stroke="#10b981"
+              stroke="#059669"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -175,7 +176,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
             <path
               d={forecastPath}
               fill="none"
-              stroke="#818cf8"
+              stroke="#4f46e5"
               strokeWidth="2.5"
               strokeDasharray="5 3"
               strokeLinecap="round"
@@ -201,16 +202,16 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                   cx={getX(i)}
                   cy={getY(d.actualMW)}
                   r={hoveredIndex === i ? 5 : 2.5}
-                  fill="#10b981"
-                  stroke="#080c14"
+                  fill="#059669"
+                  stroke="#ffffff"
                   strokeWidth="1.5"
                 />
                 <circle
                   cx={getX(i)}
                   cy={getY(d.forecastMW)}
                   r={hoveredIndex === i ? 5 : 2.5}
-                  fill="#818cf8"
-                  stroke="#080c14"
+                  fill="#4f46e5"
+                  stroke="#ffffff"
                   strokeWidth="1.5"
                 />
               </g>
@@ -223,7 +224,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                 y1={padding.top}
                 x2={getX(hoveredIndex)}
                 y2={padding.top + innerHeight}
-                stroke="#00e5ff"
+                stroke="#0284c7"
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
               />

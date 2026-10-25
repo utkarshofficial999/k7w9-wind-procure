@@ -34,8 +34,9 @@ export default function ForecastEvolution({ selectedDate }) {
   // Chart setup
   const chartHeight = 260;
   const chartWidth = 840;
-  const pad = { top: 25, right: 35, bottom: 45, left: 60 };
+  const pad = { top: 25, right: 35, bottom: 45, left: 80 };
   const innerW = chartWidth - pad.left - pad.right;
+
   const innerH = chartHeight - pad.top - pad.bottom;
 
   const maxVal = Math.max(...forecasts.map((d) => d.forecastMW), actualMW, 1000);
@@ -96,14 +97,14 @@ export default function ForecastEvolution({ selectedDate }) {
                 y1={getY(actualMW)}
                 x2={pad.left + innerW}
                 y2={getY(actualMW)}
-                stroke="#10b981"
+                stroke="#059669"
                 strokeWidth="2.5"
                 strokeDasharray="6 4"
               />
               <text
                 x={pad.left + innerW}
                 y={getY(actualMW) - 8}
-                fill="#10b981"
+                fill="#059669"
                 fontSize="11"
                 fontWeight="700"
                 textAnchor="end"
@@ -117,16 +118,16 @@ export default function ForecastEvolution({ selectedDate }) {
                 y1={pad.top}
                 x2={getX(25)}
                 y2={pad.top + innerH}
-                stroke="#00e5ff"
+                stroke="#0284c7"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
               />
               <text
                 x={getX(25) + 6}
                 y={pad.top + 16}
-                fill="#00e5ff"
+                fill="#0284c7"
                 fontSize="10"
-                fontWeight="600"
+                fontWeight="700"
               >
                 Day-Ahead Auction Cutoff (D-1 11:00)
               </text>
@@ -142,7 +143,8 @@ export default function ForecastEvolution({ selectedDate }) {
                       y1={yPos}
                       x2={pad.left + innerW}
                       y2={yPos}
-                      stroke="rgba(255, 255, 255, 0.06)"
+                      stroke="#e2e8f0"
+                      strokeDasharray="3 3"
                     />
                     <text
                       x={pad.left - 8}
@@ -162,7 +164,7 @@ export default function ForecastEvolution({ selectedDate }) {
               <path
                 d={linePath}
                 fill="none"
-                stroke="#818cf8"
+                stroke="#4f46e5"
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -179,8 +181,8 @@ export default function ForecastEvolution({ selectedDate }) {
                       cx={cx}
                       cy={cy}
                       r={isDayAhead ? 6 : 4}
-                      fill={isDayAhead ? '#00e5ff' : '#818cf8'}
-                      stroke="#080c14"
+                      fill={isDayAhead ? '#0284c7' : '#4f46e5'}
+                      stroke="#ffffff"
                       strokeWidth="2"
                     >
                       <title>
@@ -197,9 +199,10 @@ export default function ForecastEvolution({ selectedDate }) {
                   key={i}
                   x={getX(h)}
                   y={pad.top + innerH + 22}
-                  fill="#94a3b8"
+                  fill="#475569"
                   fontSize="10"
                   fontFamily="monospace"
+                  fontWeight="600"
                   textAnchor="middle"
                 >
                   {h === 0 ? 'Delivery (0h)' : `${h}h Before`}

@@ -11,8 +11,9 @@ export default function ErrorAnalytics({ monthlyData }) {
 
   const chartHeight = 220;
   const chartWidth = 840;
-  const pad = { top: 20, right: 20, bottom: 35, left: 50 };
+  const pad = { top: 20, right: 20, bottom: 35, left: 75 };
   const innerW = chartWidth - pad.left - pad.right;
+
   const innerH = chartHeight - pad.top - pad.bottom;
 
   return (
@@ -59,15 +60,15 @@ export default function ErrorAnalytics({ monthlyData }) {
               width={(12 / 24) * innerW}
               height={innerH}
               fill="rgba(245, 158, 11, 0.08)"
-              stroke="rgba(245, 158, 11, 0.2)"
+              stroke="rgba(245, 158, 11, 0.3)"
               strokeDasharray="4 4"
             />
             <text
               x={pad.left + (13 / 24) * innerW}
               y={pad.top + 14}
-              fill="#f59e0b"
+              fill="#b45309"
               fontSize="11"
-              fontWeight="600"
+              fontWeight="700"
               textAnchor="middle"
             >
               PEAK DEMAND & TRADING HOURS (07:00 - 19:00 UTC)
@@ -84,7 +85,7 @@ export default function ErrorAnalytics({ monthlyData }) {
                     y1={yPos}
                     x2={pad.left + innerW}
                     y2={yPos}
-                    stroke="rgba(255, 255, 255, 0.06)"
+                    stroke="#e2e8f0"
                     strokeDasharray="3 3"
                   />
                   <text
@@ -111,8 +112,8 @@ export default function ErrorAnalytics({ monthlyData }) {
 
               const barColor =
                 activeMetric === 'bias'
-                  ? val >= 0 ? '#f43f5e' : '#f59e0b'
-                  : pt.isPeak ? '#00e5ff' : '#818cf8';
+                  ? val >= 0 ? '#e11d48' : '#d97706'
+                  : pt.isPeak ? '#0284c7' : '#6366f1';
 
               return (
                 <g key={i}>
@@ -123,7 +124,7 @@ export default function ErrorAnalytics({ monthlyData }) {
                     height={barH}
                     fill={barColor}
                     rx="3"
-                    opacity="0.85"
+                    opacity="0.9"
                   >
                     <title>
                       {`Hour ${pt.hour}:00 (SPs ${pt.settlementPeriods.join('&')}) | ${activeMetric.toUpperCase()}: ${val} MW`}
@@ -132,9 +133,10 @@ export default function ErrorAnalytics({ monthlyData }) {
                   <text
                     x={xPos + barW / 2}
                     y={pad.top + innerH + 16}
-                    fill="#94a3b8"
+                    fill="#475569"
                     fontSize="10"
                     fontFamily="monospace"
+                    fontWeight="600"
                     textAnchor="middle"
                   >
                     {pt.hour}
