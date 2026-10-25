@@ -7,7 +7,8 @@ from fastapi.responses import FileResponse
 
 from .models import (
     DayAheadResponse, MonthlyOverviewResponse,
-    EvolutionSeries, ProcurementSimRequest, ProcurementSimResult
+    EvolutionSeries, ProcurementSimRequest, ProcurementSimResult,
+    SummaryResponse
 )
 from .analytics import analytics_engine
 from .data_fetcher import data_fetcher
@@ -40,6 +41,18 @@ def health_check():
         "forecastsRecords": forecasts_count,
         "supportedDeliveryDates": [f"2026-01-{d:02d}" for d in range(1, 32)]
     }
+
+@app.get("/api/summary", response_model=SummaryResponse)
+def get_summary(
+    cutoff_hour: int = Query(
+        DEFAULT_CUTOFF_HOUR,
+        description="Day-ahead cutoff hour on D-1 (e.g. 11 for 11:00 UTC EPEX auction)"
+    )
+):
+    try:
+        return analytics_engine.get_summary(cutoff_hour=cutoff_hour)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/monthly-overview", response_model=MonthlyOverviewResponse)
 def get_monthly_overview(

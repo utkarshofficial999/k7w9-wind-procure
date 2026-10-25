@@ -8,6 +8,12 @@ export async function fetchHealth() {
   return res.json();
 }
 
+export async function fetchSummary(cutoffHour = 11) {
+  const res = await fetch(`${API_BASE}/summary?cutoff_hour=${cutoffHour}`);
+  if (!res.ok) throw new Error('Failed to fetch summary');
+  return res.json();
+}
+
 export async function fetchMonthlyOverview(cutoffHour = 11) {
   const res = await fetch(`${API_BASE}/monthly-overview?cutoff_hour=${cutoffHour}`);
   if (!res.ok) throw new Error('Failed to fetch monthly overview');

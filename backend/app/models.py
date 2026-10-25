@@ -31,6 +31,9 @@ class AccuracyMetrics(BaseModel):
     p95ErrorMW: float
     maxOverForecastMW: float # Worst under-procurement risk
     maxUnderForecastMW: float # Worst over-procurement surplus
+    allErrorsSameSign: bool = False
+    sameSignNote: Optional[str] = None
+
 
 class MarketSegmentMetrics(BaseModel):
     peak: AccuracyMetrics
@@ -100,3 +103,25 @@ class ProcurementSimResult(BaseModel):
     estimatedImbalanceRiskCostGBP: float
     estimatedRiskSavingsGBP: float
     notes: str
+
+class TopHourErrorItem(BaseModel):
+    hour: int
+    hourLabel: str
+    meanErrorMW: float
+
+class TopHourPctErrorItem(BaseModel):
+    hour: int
+    hourLabel: str
+    meanPctError: float
+
+class SummaryResponse(BaseModel):
+    month: str
+    cutoffHour: int
+    totalHours: int
+    maxMonthlyShortfallMW: float
+    maxMonthlyShortfallTimestamp: str
+    shareOfHoursOverForecastPercent: float
+    top3WorstHoursByMeanError: List[TopHourErrorItem]
+    top3WorstHoursByMeanPctError: List[TopHourPctErrorItem]
+    monthlyMetrics: AccuracyMetrics
+

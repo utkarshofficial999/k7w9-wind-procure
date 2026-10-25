@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, ArrowUpRight, ArrowDownRight, Info, Eye } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, ArrowDownRight, Info } from 'lucide-react';
 
 export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -14,17 +14,41 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
   }
 
   const series = dayData.timeSeries;
-  const maxGen = Math.max(...series.map((d) => Math.max(d.actualMW, d.forecastMW)), 1000);
-  const chartHeight = 280;
-  const chartWidth = 900;
-  const padding = { top: 25, right: 30, bottom: 40, left: 80 };
-  const innerWidth = chartWidth - padding.left - padding.right;
+  const minVal = Math.min(...series.map((d) => Math.min(d.actualMW, d.forecastMW)));
+  const maxVal = Math.max(...series.map((d) => Math.max(d.actualMW, d.forecastMW)));
 
+  // Y-axis starts at rounded minimum: floor to nearest 1,000 MW below min of actual and forecast
+  let yMin = Math.floor(minVal / 1000) * 1000;
+  if (yMin >= minVal && yMin >= 1000) {
+    yMin -= 1000;
+  }
+  yMin = Math.max(0, yMin);
+
+  // Even tick steps with ample headroom to guarantee no clipping of lines or markers
+  const span = maxVal - yMin;
+  let step = 2000;
+  if (span <= 4000) step = 1000;
+  else if (span <= 10000) step = 2000;
+  else if (span <= 18000) step = 2500;
+  else step = 5000;
+
+  const numSteps = Math.ceil((maxVal - yMin) / step) + 1;
+  const yMax = yMin + numSteps * step;
+
+  const yTicks = [];
+  for (let v = yMin; v <= yMax; v += step) {
+    yTicks.push(v);
+  }
+
+  const chartHeight = 300;
+  const chartWidth = 920;
+  const padding = { top: 30, right: 30, bottom: 45, left: 85 };
+  const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
   // Scales
   const getX = (i) => padding.left + (i / (series.length - 1)) * innerWidth;
-  const getY = (val) => padding.top + innerHeight - (val / (maxGen * 1.15)) * innerHeight;
+  const getY = (val) => padding.top + innerHeight - ((val - yMin) / (yMax - yMin)) * innerHeight;
 
   // Build SVG Paths
   const actualPath = series
@@ -35,7 +59,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
     .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.forecastMW)}`)
     .join(' ');
 
-  // Actual area fill
+  // Actual area fill down to baseline (yMin)
   const actualArea = `${actualPath} L ${getX(series.length - 1)} ${padding.top + innerHeight} L ${getX(0)} ${padding.top + innerHeight} Z`;
 
   const hoveredPoint = hoveredIndex !== null ? series[hoveredIndex] : null;
@@ -88,7 +112,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               </linearGradient>
             </defs>
 
-            {/* Peak Hours Background Highlight (07:00 to 19:00 UTC) */}
+            {/* Peak Hours Background Highlight (07:00 to 19:00 UTC) with Updated Label */}
             <rect
               x={getX(7)}
               y={padding.top}
@@ -100,18 +124,17 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
             />
             <text
               x={getX(13)}
-              y={padding.top + 15}
+              y={padding.top + 16}
               fill="#b45309"
               fontSize="11"
               fontWeight="700"
               textAnchor="middle"
             >
-              UK DAY-AHEAD PEAK PERIOD (07:00 - 19:00 UTC)
+              Peak 07:00-19:00 UTC (winter/GMT mapping)
             </text>
 
-            {/* Grid Lines */}
-            {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
-              const yVal = maxGen * 1.15 * pct;
+            {/* Grid Lines with Even Tick Steps */}
+            {yTicks.map((yVal, idx) => {
               const yPos = getY(yVal);
               return (
                 <g key={idx}>
@@ -145,7 +168,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                   <text
                     key={i}
                     x={getX(i)}
-                    y={padding.top + innerHeight + 20}
+                    y={padding.top + innerHeight + 22}
                     fill="#475569"
                     fontSize="11"
                     fontFamily="monospace"
@@ -201,7 +224,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                 <circle
                   cx={getX(i)}
                   cy={getY(d.actualMW)}
-                  r={hoveredIndex === i ? 5 : 2.5}
+                  r={hoveredIndex === i ? 5 : 3}
                   fill="#059669"
                   stroke="#ffffff"
                   strokeWidth="1.5"
@@ -209,7 +232,7 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
                 <circle
                   cx={getX(i)}
                   cy={getY(d.forecastMW)}
-                  r={hoveredIndex === i ? 5 : 2.5}
+                  r={hoveredIndex === i ? 5 : 3}
                   fill="#4f46e5"
                   stroke="#ffffff"
                   strokeWidth="1.5"
@@ -353,6 +376,14 @@ export default function DayAheadView({ dayData, selectedDate, cutoffHour }) {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Footnote on SP-to-Hour mapping and winter/GMT vs BST */}
+        <div className="table-settlement-footnote">
+          <Info size={14} className="footnote-icon" />
+          <span>
+            <strong>Settlement & Time Standard Note:</strong> SP-to-hour mapping shown is valid for GMT (winter). During BST, SP 1 starts 23:00 UTC of the prior day; peak is defined in local time and applies to weekdays.
+          </span>
         </div>
       </div>
     </div>

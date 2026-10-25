@@ -9,7 +9,8 @@ from .config import DEFAULT_CUTOFF_HOUR, PEAK_HOUR_START, PEAK_HOUR_END, DEFAULT
 from .models import (
     DayAheadTimeSeriesPoint, AccuracyMetrics, MarketSegmentMetrics,
     DiurnalPoint, DailySummary, DayAheadResponse, MonthlyOverviewResponse,
-    EvolutionPoint, EvolutionSeries, ProcurementSimRequest, ProcurementSimResult
+    EvolutionPoint, EvolutionSeries, ProcurementSimRequest, ProcurementSimResult,
+    TopHourErrorItem, TopHourPctErrorItem, SummaryResponse
 )
 
 class AnalyticsEngine:
@@ -75,6 +76,17 @@ class AnalyticsEngine:
         pct_err = (abs_err / act.replace(0, np.nan)) * 100
         mape = float(pct_err.dropna().mean()) if not pct_err.dropna().empty else None
 
+        # Check if all errors share the same sign (e.g. all positive over-forecast)
+        all_same_sign = False
+        same_sign_note = None
+        if len(df) > 0:
+            if (err > 0).all():
+                all_same_sign = True
+                same_sign_note = f"All {len(df)} hours over-forecast, so Bias = MAE."
+            elif (err < 0).all():
+                all_same_sign = True
+                same_sign_note = f"All {len(df)} hours under-forecast, so -Bias = MAE."
+
         return AccuracyMetrics(
             totalHours=int(len(df)),
             meanActualMW=round(float(act.mean()), 1),
@@ -93,7 +105,9 @@ class AnalyticsEngine:
             p90ErrorMW=round(float(err.quantile(0.90)), 1),
             p95ErrorMW=round(float(err.quantile(0.95)), 1),
             maxOverForecastMW=round(float(err.max()), 1),
-            maxUnderForecastMW=round(float(err.min()), 1)
+            maxUnderForecastMW=round(float(err.min()), 1),
+            allErrorsSameSign=all_same_sign,
+            sameSignNote=same_sign_note
         )
 
     def get_aligned_data(self, cutoff_hour: int = DEFAULT_CUTOFF_HOUR, target_date: Optional[str] = None) -> pd.DataFrame:
@@ -371,6 +385,81 @@ class AnalyticsEngine:
                 f"against {round(avoided_exposure_mwh):,} MWh of high-cost peak deficit imbalance volume, "
                 f"yielding an estimated £{round(savings):,} in avoided balancing cashout exposure."
             )
+        )
+
+    def get_summary(self, cutoff_hour: int = DEFAULT_CUTOFF_HOUR) -> SummaryResponse:
+        """
+        Computes dynamic summary metrics for January 2026:
+        - Max monthly shortfall (MW and ISO timestamp)
+        - Share of hours with over-forecast (%)
+        - Top-3 worst hours by mean error (MW)
+        - Top-3 worst hours by mean percentage error (%)
+        """
+        df = self.get_aligned_data(cutoff_hour=cutoff_hour)
+        metrics = self._calc_metrics_from_df(df)
+
+        if df.empty:
+            return SummaryResponse(
+                month="January 2026",
+                cutoffHour=cutoff_hour,
+                totalHours=0,
+                maxMonthlyShortfallMW=0.0,
+                maxMonthlyShortfallTimestamp="",
+                shareOfHoursOverForecastPercent=0.0,
+                top3WorstHoursByMeanError=[],
+                top3WorstHoursByMeanPctError=[],
+                monthlyMetrics=metrics
+            )
+
+        # Max shortfall (forecast > actual, i.e. highest error_mw)
+        max_idx = df['error_mw'].idxmax()
+        max_row = df.loc[max_idx]
+        max_shortfall_mw = round(float(max_row['error_mw']), 1)
+        max_shortfall_ts = max_row['hour_start'].isoformat()
+
+        # Share of hours with over-forecast (error_mw > 0)
+        over_count = int((df['error_mw'] > 0).sum())
+        share_over_pct = round((over_count / len(df)) * 100, 2)
+
+        # Diurnal worst hours calculation
+        df_hourly = df.copy()
+        df_hourly['hour'] = df_hourly['hour_start'].dt.hour
+
+        # Top 3 worst hours by mean error (MW)
+        mean_errors = df_hourly.groupby('hour')['error_mw'].mean()
+        worst_by_mean_err = mean_errors.sort_values(ascending=False).head(3)
+        top3_mean_error = [
+            TopHourErrorItem(
+                hour=int(h),
+                hourLabel=f"{int(h):02d}:00 UTC",
+                meanErrorMW=round(float(val), 1)
+            )
+            for h, val in worst_by_mean_err.items()
+        ]
+
+        # Top 3 worst hours by mean percentage error (%)
+        df_hourly['pct_error'] = (df_hourly['abs_error_mw'] / df_hourly['actual_mw'].replace(0, np.nan)) * 100
+        mean_pct_errors = df_hourly.groupby('hour')['pct_error'].mean()
+        worst_by_pct_err = mean_pct_errors.sort_values(ascending=False).head(3)
+        top3_pct_error = [
+            TopHourPctErrorItem(
+                hour=int(h),
+                hourLabel=f"{int(h):02d}:00 UTC",
+                meanPctError=round(float(val), 2)
+            )
+            for h, val in worst_by_pct_err.items()
+        ]
+
+        return SummaryResponse(
+            month="January 2026",
+            cutoffHour=cutoff_hour,
+            totalHours=int(len(df)),
+            maxMonthlyShortfallMW=max_shortfall_mw,
+            maxMonthlyShortfallTimestamp=max_shortfall_ts,
+            shareOfHoursOverForecastPercent=share_over_pct,
+            top3WorstHoursByMeanError=top3_mean_error,
+            top3WorstHoursByMeanPctError=top3_pct_error,
+            monthlyMetrics=metrics
         )
 
 # Singleton instance

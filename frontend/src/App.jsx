@@ -6,8 +6,8 @@ import ErrorAnalytics from './components/ErrorAnalytics';
 import ForecastEvolution from './components/ForecastEvolution';
 import ProcurementSimulator from './components/ProcurementSimulator';
 import DailyTable from './components/DailyTable';
-import { fetchHealth, fetchMonthlyOverview, fetchDayAheadView } from './services/api';
-import { LineChart, Compass, Layers, Sliders, Table2, AlertCircle, Info } from 'lucide-react';
+import { fetchHealth, fetchMonthlyOverview, fetchDayAheadView, fetchSummary } from './services/api';
+import { LineChart, Compass, Layers, Sliders, Table2, AlertCircle } from 'lucide-react';
 import './App.css';
 
 export default function App() {
@@ -17,23 +17,26 @@ export default function App() {
 
   const [health, setHealth] = useState(null);
   const [monthlyData, setMonthlyData] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
   const [dayData, setDayData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load health & monthly data on initial mount or cutoff change
+  // Load health, monthly overview, and summary data on mount or cutoff change
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
     Promise.all([
       fetchHealth(),
-      fetchMonthlyOverview(cutoffHour)
+      fetchMonthlyOverview(cutoffHour),
+      fetchSummary(cutoffHour)
     ])
-      .then(([healthRes, monthRes]) => {
+      .then(([healthRes, monthRes, summaryRes]) => {
         if (isMounted) {
           setHealth(healthRes);
           setMonthlyData(monthRes);
+          setSummaryData(summaryRes);
           setLoading(false);
         }
       })
@@ -83,23 +86,33 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="clean-main-container">
-        {/* Subtle, Crisp Market Notice Bar */}
+        {/* Top Market Analysis Banner with Visible MONTH Scope Badge */}
         <div className="clean-notice-bar">
           <div className="notice-content">
-            <span className="notice-badge">Market Analysis (Jan 2026)</span>
+            <span className="notice-badge">Month: Jan 2026 ({summaryData?.totalHours || 744} hrs)</span>
             <span className="notice-text">
-              Day-ahead forecasts exhibited a systematic <strong>+1,840 MW over-prediction bias</strong> (P90 Deficit Risk: <strong>+4,312 MW</strong>). 
-              Without error buffering, a utility under-procures day-ahead thermal power, triggering severe Balancing Mechanism cashout charges.
+              <strong>Month Scope:</strong> Day-ahead forecasts exhibited a systematic{' '}
+              <strong>
+                +{summaryData?.monthlyMetrics?.biasMW ? Math.round(summaryData.monthlyMetrics.biasMW).toLocaleString() : '1,840'} MW over-prediction bias
+              </strong>{' '}
+              (Monthly P90 Deficit Risk:{' '}
+              <strong>
+                +{summaryData?.monthlyMetrics?.p90ErrorMW ? Math.round(summaryData.monthlyMetrics.p90ErrorMW).toLocaleString() : '4,312'} MW
+              </strong>; Max monthly shortfall:{' '}
+              <strong>
+                +{summaryData?.maxMonthlyShortfallMW ? Math.round(summaryData.maxMonthlyShortfallMW).toLocaleString() : '6,833'} MW
+              </strong>; Over-forecast across <strong>{summaryData?.shareOfHoursOverForecastPercent ?? '84.4'}%</strong> of delivery hours).
+              Without risk buffering, the utility under-procures day-ahead thermal power, triggering severe cashout penalties.
             </span>
           </div>
-          <span className="notice-meta">744 Delivery Hours Evaluated</span>
+          <span className="notice-meta">Scope: Month (Jan 2026)</span>
         </div>
 
-        {/* 4 Clean Metric Cards */}
+        {/* 4 Clean Metric Cards with Day / Month Scope Toggle */}
         {monthlyData && (
           <MetricCards
-            metrics={activeTab === 'dayahead' && dayData ? dayData.metrics : monthlyData.metrics}
-            isDayView={activeTab === 'dayahead'}
+            dayMetrics={dayData?.metrics}
+            monthMetrics={monthlyData?.metrics}
             selectedDate={selectedDate}
           />
         )}
@@ -165,7 +178,10 @@ export default function App() {
             )}
 
             {activeTab === 'analytics' && (
-              <ErrorAnalytics monthlyData={monthlyData} />
+              <ErrorAnalytics 
+                monthlyData={monthlyData} 
+                summaryData={summaryData} 
+              />
             )}
 
             {activeTab === 'evolution' && (
@@ -173,7 +189,10 @@ export default function App() {
             )}
 
             {activeTab === 'simulator' && (
-              <ProcurementSimulator cutoffHour={cutoffHour} />
+              <ProcurementSimulator 
+                cutoffHour={cutoffHour} 
+                defaultMonthlyP90={summaryData?.monthlyMetrics?.p90ErrorMW || monthlyData?.metrics?.p90ErrorMW || 4312.4}
+              />
             )}
 
             {activeTab === 'table' && (
