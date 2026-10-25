@@ -5,9 +5,10 @@ An executive-grade decision-support platform designed for UK electricity utility
 ---
 
 ## 🚀 Live Demo & Repository
-- **Live Application Link**: [https://aura-wind-portal.vercel.app](https://aura-wind-portal.vercel.app) *(or Heroku deployment)*
-- **GitHub Repository**: Public anonymous repo (e.g. `https://github.com/anonymous-energy/kjhwr-wind-forecast`)
+- **Live Application Link**: [https://k7w9-wind-procure.onrender.com](https://k7w9-wind-procure.onrender.com) *(or local http://localhost:8050)*
+- **GitHub Repository**: [https://github.com/utkarshofficial999/k7w9-wind-procure](https://github.com/utkarshofficial999/k7w9-wind-procure)
 - **Video Walkthrough (YouTube Unlisted)**: [Link to 10-Minute Video Demo](https://youtu.be/sample-video-link)
+
 
 ---
 
