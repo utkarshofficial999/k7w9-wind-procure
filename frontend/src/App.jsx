@@ -7,7 +7,7 @@ import ForecastEvolution from './components/ForecastEvolution';
 import ProcurementSimulator from './components/ProcurementSimulator';
 import DailyTable from './components/DailyTable';
 import { fetchHealth, fetchMonthlyOverview, fetchDayAheadView } from './services/api';
-import { LayoutDashboard, LineChart, Compass, Sliders, Table2, Layers, AlertCircle } from 'lucide-react';
+import { LineChart, Compass, Layers, Sliders, Table2, AlertCircle, Info } from 'lucide-react';
 import './App.css';
 
 export default function App() {
@@ -72,110 +72,90 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
-      {/* Top Header & Navigation */}
+    <div className="clean-app-shell">
+      {/* Sleek Minimalist Navbar */}
       <Header
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         cutoffHour={cutoffHour}
         onCutoffChange={setCutoffHour}
-        health={health}
       />
 
       {/* Main Content Area */}
-      <main className="main-content">
-        {/* Executive Summary Banner */}
-        <section className="executive-banner glass-panel">
-          <div className="banner-left">
-            <span className="banner-tag">CLIENT DECISION BRIEFING</span>
-            <h2 className="banner-title">
-              UK Day-Ahead Wind Forecasting & Procurement Summary
-            </h2>
-            <p className="banner-desc">
-              During <strong>January 2026</strong>, day-ahead wind forecasts available at auction gate closure (11:00 UTC D-1) 
-              exhibited a systematic <strong className="text-rose">+1,840 MW over-prediction bias</strong> (P90 Deficit Risk: +4,312 MW). 
-              Without quantified error buffering, an electricity utility relying on raw wind forecasts under-procures power in the day-ahead wholesale market, 
-              incurring severe Balancing Mechanism cashout charges.
-            </p>
+      <main className="clean-main-container">
+        {/* Subtle, Crisp Market Notice Bar */}
+        <div className="clean-notice-bar">
+          <div className="notice-content">
+            <span className="notice-badge">Market Analysis (Jan 2026)</span>
+            <span className="notice-text">
+              Day-ahead forecasts exhibited a systematic <strong>+1,840 MW over-prediction bias</strong> (P90 Deficit Risk: <strong>+4,312 MW</strong>). 
+              Without error buffering, a utility under-procures day-ahead thermal power, triggering severe Balancing Mechanism cashout charges.
+            </span>
           </div>
-          <div className="banner-badges">
-            <div className="summary-pill">
-              <span className="pill-title">Evaluated Hours</span>
-              <span className="pill-val">744 / 744 (100%)</span>
-            </div>
-            <div className="summary-pill">
-              <span className="pill-title">Systematic Bias</span>
-              <span className="pill-val text-rose">+1,840 MW</span>
-            </div>
-            <div className="summary-pill">
-              <span className="pill-title">P90 Risk Margin</span>
-              <span className="pill-val text-rose">+4,312 MW</span>
-            </div>
-          </div>
-        </section>
+          <span className="notice-meta">744 Delivery Hours Evaluated</span>
+        </div>
 
-        {/* Global KPI Cards */}
+        {/* 4 Clean Metric Cards */}
         {monthlyData && (
           <MetricCards
             metrics={activeTab === 'dayahead' && dayData ? dayData.metrics : monthlyData.metrics}
-            segmentMetrics={monthlyData.segmentMetrics}
             isDayView={activeTab === 'dayahead'}
             selectedDate={selectedDate}
           />
         )}
 
-        {/* Navigation Tabs */}
-        <div className="tabs-navigation">
+        {/* Modern Clean Tabs */}
+        <div className="clean-tabs-row">
           <button
-            className={`tab-btn ${activeTab === 'dayahead' ? 'active' : ''}`}
+            className={`clean-tab ${activeTab === 'dayahead' ? 'active' : ''}`}
             onClick={() => setActiveTab('dayahead')}
           >
-            <LineChart size={17} />
-            <span>Day-Ahead Decision Workbench</span>
+            <LineChart size={15} />
+            <span>Day-Ahead Workbench</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+            className={`clean-tab ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
-            <Compass size={17} />
-            <span>Forecast Error & Accuracy Analytics</span>
+            <Compass size={15} />
+            <span>Error & Accuracy Analytics</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'evolution' ? 'active' : ''}`}
+            className={`clean-tab ${activeTab === 'evolution' ? 'active' : ''}`}
             onClick={() => setActiveTab('evolution')}
           >
-            <Layers size={17} />
-            <span>Forecast Evolution (Vintage Waterfall)</span>
+            <Layers size={15} />
+            <span>Forecast Evolution Waterfall</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'simulator' ? 'active' : ''}`}
+            className={`clean-tab ${activeTab === 'simulator' ? 'active' : ''}`}
             onClick={() => setActiveTab('simulator')}
           >
-            <Sliders size={17} />
-            <span>Procurement & Thermal Buffer Optimizer</span>
+            <Sliders size={15} />
+            <span>Procurement & Buffer Optimizer</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'table' ? 'active' : ''}`}
+            className={`clean-tab ${activeTab === 'table' ? 'active' : ''}`}
             onClick={() => setActiveTab('table')}
           >
-            <Table2 size={17} />
-            <span>January 2026 Daily Evaluation Matrix</span>
+            <Table2 size={15} />
+            <span>Daily Performance Matrix</span>
           </button>
         </div>
 
         {/* Tab Content Display */}
         {loading ? (
-          <div className="loading-state glass-panel">
-            <div className="loading-spinner"></div>
-            <p>Loading Elexon BMRS day-ahead datasets and analytical models...</p>
+          <div className="clean-state-box">
+            <div className="clean-spinner"></div>
+            <p>Loading Elexon BMRS day-ahead market data...</p>
           </div>
         ) : error ? (
-          <div className="error-state glass-panel">
-            <AlertCircle size={32} className="text-rose" />
+          <div className="clean-state-box error">
+            <AlertCircle size={24} className="text-rose" />
             <p>Error connecting to analytics engine: {error}</p>
           </div>
         ) : (
-          <div className="tab-body">
+          <div className="clean-tab-content">
             {activeTab === 'dayahead' && (
               <DayAheadView
                 dayData={dayData}
@@ -206,21 +186,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="footer-container">
-        <div className="footer-content">
-          <div>
-            <p className="footer-title">
-              UK Day-Ahead Electricity Market Decision Support System
-            </p>
-            <p className="footer-sub">
-              Built with React, FastAPI, Python, and Docker. Grounded in Elexon BMRS FUELHH (Wind Actuals) and WINDFOR (Wind Forecasts) streams for January 2026.
-            </p>
-          </div>
-          <div className="footer-attribution">
-            <span>Client Pilot Product</span>
-            <span>Technical Architecture Review Ready</span>
-          </div>
+      {/* Minimal Footer */}
+      <footer className="clean-footer">
+        <div className="footer-left">
+          <strong>AURA WIND</strong> — UK Day-Ahead Electricity Market Decision Support System
+        </div>
+        <div className="footer-right">
+          <span>Elexon BMRS Official Datasets (FUELHH & WINDFOR)</span>
+          <span>•</span>
+          <span>January 2026</span>
         </div>
       </footer>
     </div>

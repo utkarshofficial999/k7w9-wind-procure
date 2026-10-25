@@ -1,128 +1,91 @@
 import React from 'react';
-import { Wind, Clock, Calendar, Zap, ShieldAlert, Activity } from 'lucide-react';
+import { Wind, ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react';
 
 export default function Header({
   selectedDate,
   onDateChange,
   cutoffHour,
-  onCutoffChange,
-  health
+  onCutoffChange
 }) {
   const dates = Array.from({ length: 31 }, (_, i) => `2026-01-${String(i + 1).padStart(2, '0')}`);
+  const currentDayNum = parseInt(selectedDate.split('-')[2]);
 
   return (
-    <header className="header-container glass-panel">
-      <div className="header-top">
-        <div className="brand-group">
-          <div className="brand-icon-wrapper">
-            <Wind className="brand-icon" />
-          </div>
-          <div>
-            <div className="brand-badge-row">
-              <span className="badge-uk">UK NATIONAL GRID / BMRS</span>
-              <span className="badge-live">
-                <span className="pulse-dot"></span>
-                ACTIVE TRADING DATA
-              </span>
-            </div>
-            <h1 className="brand-title">AURA WIND <span className="title-sub">| Day-Ahead Decision & Forecast Risk Portal</span></h1>
-          </div>
+    <header className="clean-navbar">
+      <div className="navbar-left">
+        <div className="clean-logo">
+          <Wind size={20} className="logo-icon" />
+          <span className="logo-text">AURA <span className="logo-sub">WIND</span></span>
         </div>
-
-        <div className="header-meta">
-          <div className="meta-item">
-            <span className="meta-label">Market Source</span>
-            <span className="meta-value">Elexon BMRS (FUELHH + WINDFOR)</span>
-          </div>
-          <div className="meta-item">
-            <span className="meta-label">Evaluation Horizon</span>
-            <span className="meta-value text-cyan">January 2026 (744 Delivery Hours)</span>
-          </div>
-          <div className="meta-item">
-            <span className="meta-label">System Health</span>
-            <span className="meta-value text-green">
-              <Activity size={14} style={{ display: 'inline', marginRight: 4 }} />
-              100% Operational
-            </span>
-          </div>
-        </div>
+        <span className="navbar-badge">UK Day-Ahead Power</span>
       </div>
 
-      <div className="header-controls">
-        <div className="control-group">
-          <label className="control-label">
-            <Calendar size={15} />
-            <span>Delivery Date:</span>
-          </label>
-          <select 
-            className="control-select" 
-            value={selectedDate} 
-            onChange={(e) => onDateChange(e.target.value)}
-          >
-            {dates.map((d) => (
-              <option key={d} value={d}>
-                {d} (Day {parseInt(d.split('-')[2])})
-              </option>
-            ))}
-          </select>
-
-          <div className="quick-date-buttons">
-            <button 
-              className="btn-quick"
-              disabled={selectedDate === '2026-01-01'}
-              onClick={() => {
-                const day = parseInt(selectedDate.split('-')[2]);
-                if (day > 1) onDateChange(`2026-01-${String(day - 1).padStart(2, '0')}`);
-              }}
+      <div className="navbar-controls">
+        {/* Date Selector with clean chevrons */}
+        <div className="clean-control-item">
+          <Calendar size={14} className="control-icon" />
+          <div className="date-picker-wrapper">
+            <button
+              className="chevron-btn"
+              disabled={currentDayNum <= 1}
+              onClick={() => onDateChange(`2026-01-${String(currentDayNum - 1).padStart(2, '0')}`)}
+              title="Previous day"
             >
-              Prev Day
+              <ChevronLeft size={16} />
             </button>
-            <button 
-              className="btn-quick"
-              disabled={selectedDate === '2026-01-31'}
-              onClick={() => {
-                const day = parseInt(selectedDate.split('-')[2]);
-                if (day < 31) onDateChange(`2026-01-${String(day + 1).padStart(2, '0')}`);
-              }}
+            <select
+              className="clean-select"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
             >
-              Next Day
+              {dates.map((d) => (
+                <option key={d} value={d}>
+                  Jan {parseInt(d.split('-')[2])}, 2026
+                </option>
+              ))}
+            </select>
+            <button
+              className="chevron-btn"
+              disabled={currentDayNum >= 31}
+              onClick={() => onDateChange(`2026-01-${String(currentDayNum + 1).padStart(2, '0')}`)}
+              title="Next day"
+            >
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>
 
-        <div className="control-group">
-          <label className="control-label">
-            <Clock size={15} />
-            <span>Decision Cutoff Time:</span>
-          </label>
-          <div className="cutoff-toggle-group">
-            <button 
-              className={`cutoff-btn ${cutoffHour === 11 ? 'active' : ''}`}
+        {/* Clean Segmented Cutoff Control */}
+        <div className="clean-control-item">
+          <Clock size={14} className="control-icon" />
+          <div className="clean-segmented-pills">
+            <button
+              className={`pill-btn ${cutoffHour === 11 ? 'active' : ''}`}
               onClick={() => onCutoffChange(11)}
-              title="UK EPEX SPOT / Nord Pool Day-Ahead Auction Gate Closure (11:00 UTC D-1)"
+              title="EPEX SPOT / Nord Pool UK Day-Ahead Auction Cutoff (11:00 UTC D-1)"
             >
               11:00 UTC (D-1 Auction)
             </button>
-            <button 
-              className={`cutoff-btn ${cutoffHour === 9 ? 'active' : ''}`}
+            <button
+              className={`pill-btn ${cutoffHour === 9 ? 'active' : ''}`}
               onClick={() => onCutoffChange(9)}
-              title="Early morning trading desk portfolio prep (09:00 UTC D-1)"
+              title="Early morning desk prep (09:00 UTC D-1)"
             >
-              09:00 UTC (Early D-1)
+              09:00 UTC
             </button>
-            <button 
-              className={`cutoff-btn ${cutoffHour === 14 ? 'active' : ''}`}
+            <button
+              className={`pill-btn ${cutoffHour === 14 ? 'active' : ''}`}
               onClick={() => onCutoffChange(14)}
-              title="Post-auction / afternoon schedule confirmation (14:00 UTC D-1)"
+              title="Afternoon schedule confirmation (14:00 UTC D-1)"
             >
-              14:00 UTC (Afternoon D-1)
+              14:00 UTC
             </button>
-            <button 
-              className={`cutoff-btn ${cutoffHour === -1 ? 'active' : ''}`}
+            <button
+              className={`pill-btn ${cutoffHour === -1 ? 'active' : ''}`}
               onClick={() => onCutoffChange(-1)}
-              title="Latest Intraday forecast available immediately prior to delivery"
+              title="Latest Intraday forecast before delivery"
             >
-              Intraday (Latest Pre-Delivery)
+              Intraday
             </button>
           </div>
         </div>
