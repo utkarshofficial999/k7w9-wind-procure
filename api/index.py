@@ -20,8 +20,12 @@ class VercelPathMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
-            headers = dict(scope.get("headers", []))
-            matched_path = headers.get(b"x-matched-path") or headers.get(b"x-forwarded-uri")
+            headers = {k.lower(): v for k, v in scope.get("headers", [])}
+            matched_path = (
+                headers.get(b"x-matched-path")
+                or headers.get(b"x-forwarded-uri")
+                or headers.get(b"x-original-uri")
+            )
             if matched_path:
                 clean_path = matched_path.decode("utf-8", errors="ignore").split("?")[0]
                 scope["path"] = clean_path

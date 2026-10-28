@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
 from .analytics import compare, cutoff_dt, metrics, select_day_ahead_forecast
 from .elexon import fetch_actual_wind, fetch_forecasts, required_publish_window
@@ -76,20 +73,3 @@ async def analysis(
         },
     }
 
-
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-if STATIC_DIR.exists():
-    assets_dir = STATIC_DIR / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-
-    @app.get("/")
-    async def serve_root():
-        return FileResponse(STATIC_DIR / "index.html")
-
-    @app.get("/{full_path:path}")
-    async def serve_fallback(full_path: str):
-        target = STATIC_DIR / full_path
-        if target.is_file():
-            return FileResponse(target)
-        return FileResponse(STATIC_DIR / "index.html")
