@@ -148,12 +148,15 @@ function App() {
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" minTickGap={50} />
-                  <YAxis unit=" MW" />
-                  <Tooltip formatter={(v: number) => [`${fmt(v)} MW`, ""]} />
-                  <Line type="monotone" dataKey="actual" strokeWidth={2.5} dot={false} name="Actual" />
-                  <Line type="monotone" dataKey="forecast" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Forecast" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="label" minTickGap={50} stroke="#94a3b8" tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <YAxis unit=" MW" stroke="#94a3b8" tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)", color: "#0f172a" }}
+                    formatter={(v: number) => [`${fmt(v)} MW`, ""]}
+                  />
+                  <Line type="monotone" dataKey="actual" stroke="#0284c7" strokeWidth={2.5} dot={false} name="Actual" />
+                  <Line type="monotone" dataKey="forecast" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Forecast" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -169,12 +172,15 @@ function App() {
               <div className="chart-wrap small">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" minTickGap={50} />
-                    <YAxis unit=" MW" />
-                    <Tooltip formatter={(v: number) => [`${fmt(v)} MW`, "Error"]} />
-                    <ReferenceLine y={0} />
-                    <Line type="monotone" dataKey="error" strokeWidth={2} dot={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" minTickGap={50} stroke="#94a3b8" tick={{ fill: "#64748b", fontSize: 11 }} />
+                    <YAxis unit=" MW" stroke="#94a3b8" tick={{ fill: "#64748b", fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)", color: "#0f172a" }}
+                      formatter={(v: number) => [`${fmt(v)} MW`, "Error"]}
+                    />
+                    <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} />
+                    <Line type="monotone" dataKey="error" stroke="#ea580c" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
