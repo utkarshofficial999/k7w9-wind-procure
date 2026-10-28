@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -21,10 +21,28 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def vercel_path_rewrite(request: Request, call_next):
+    matched_path = request.headers.get("x-matched-path")
+    if matched_path:
+        clean_path = matched_path.split("?")[0]
+        request.scope["path"] = clean_path
+    return await call_next(request)
+
+
 @app.get("/api/health")
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "wind-market-api"}
+
+
+@app.get("/api/debug")
+async def debug(request: Request):
+    return {
+        "url_path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "headers": {k: v for k, v in request.headers.items() if not k.lower().startswith("sec-")},
+    }
 
 
 @app.get("/api/analysis")
