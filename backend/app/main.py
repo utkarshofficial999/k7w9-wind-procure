@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from .analytics import compare, cutoff_dt, metrics, select_day_ahead_forecast
 from .elexon import fetch_actual_wind, fetch_forecasts, required_publish_window
@@ -16,6 +18,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+DIST_INDEX = Path(__file__).resolve().parent.parent.parent / "dist" / "index.html"
+
+
+@app.get("/")
+async def root():
+    if DIST_INDEX.exists():
+        return FileResponse(DIST_INDEX)
+    return {"status": "ok", "service": "wind-market-api"}
 
 
 @app.get("/api/health")

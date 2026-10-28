@@ -1,6 +1,5 @@
 # Dependencies & build
 node_modules/
-dist/
 .venv/
 __pycache__/
 *.pyc
