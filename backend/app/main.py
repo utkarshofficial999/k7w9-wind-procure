@@ -1,26 +1,14 @@
-import os
-from pathlib import Path
-from fastapi import FastAPI, Query, HTTPException
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
-from .models import (
-    DayAheadResponse, MonthlyOverviewResponse,
-    EvolutionSeries, ProcurementSimRequest, ProcurementSimResult,
-    SummaryResponse
-)
-from .analytics import analytics_engine
-from .data_fetcher import data_fetcher
-from .config import DEFAULT_CUTOFF_HOUR
+from .analytics import compare, cutoff_dt, metrics, select_day_ahead_forecast
+from .elexon import fetch_actual_wind, fetch_forecasts, required_publish_window
 
-app = FastAPI(
-    title="UK Wind Power Day-Ahead Procurement & Forecast Accuracy Platform",
-    description="Customized decision-support system for UK electricity wholesale market day-ahead procurement desks.",
-    version="1.0.0"
-)
+app = FastAPI(title="GB Wind Day-Ahead Decision API", version="1.0.0")
 
-# Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,88 +17,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/api/health")
-def health_check():
-    actuals_count = len(data_fetcher.get_actuals())
-    forecasts_count = len(data_fetcher.get_forecasts())
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "wind-market-api"}
+
+
+@app.get("/api/analysis")
+@app.get("/analysis")
+async def analysis(
+    start_date: date = Query(date(2026, 1, 1)),
+    end_date: date = Query(date(2026, 1, 31)),
+    cutoff: str = Query("09:30", pattern=r"^\d{2}:\d{2}$"),
+):
+    if start_date < date(2026, 1, 1) or end_date > date(2026, 1, 31):
+        raise HTTPException(400, "Pilot analysis is restricted to January 2026.")
+    if start_date > end_date:
+        raise HTTPException(400, "start_date must be before end_date.")
+
+    try:
+        hour, minute = map(int, cutoff.split(":"))
+        if hour > 23 or minute > 59:
+            raise ValueError
+    except ValueError:
+        raise HTTPException(400, "cutoff must be HH:MM.")
+
+    publish_from, publish_to = required_publish_window(start_date, end_date)
+
+    actuals = await fetch_actual_wind(start_date, end_date)
+    forecasts = await fetch_forecasts(publish_from, publish_to)
+
+    selected = select_day_ahead_forecast(
+        forecasts, start_date, end_date, cutoff
+    )
+    points = compare(selected, actuals)
+
     return {
-        "status": "healthy",
-        "market": "UK Wholesale Electricity (BMRS Elexon)",
-        "period": "January 2026",
-        "actualsRecords": actuals_count,
-        "forecastsRecords": forecasts_count,
-        "supportedDeliveryDates": [f"2026-01-{d:02d}" for d in range(1, 32)]
+        "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+        "decision_cutoff_gmt": cutoff,
+        "metrics": metrics(points),
+        "points": points,
+        "source": {
+            "actuals": "Elexon FUELHH",
+            "forecasts": "Elexon WINDFOR",
+        },
     }
-
-@app.get("/api/summary", response_model=SummaryResponse)
-def get_summary(
-    cutoff_hour: int = Query(
-        DEFAULT_CUTOFF_HOUR,
-        description="Day-ahead cutoff hour on D-1 (e.g. 11 for 11:00 UTC EPEX auction)"
-    )
-):
-    try:
-        return analytics_engine.get_summary(cutoff_hour=cutoff_hour)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/monthly-overview", response_model=MonthlyOverviewResponse)
-def get_monthly_overview(
-    cutoff_hour: int = Query(
-        DEFAULT_CUTOFF_HOUR,
-        description="Day-ahead cutoff hour on D-1 (e.g. 11 for 11:00 UTC EPEX auction, or -1 for real-time intraday)"
-    )
-):
-    try:
-        return analytics_engine.get_monthly_overview(cutoff_hour=cutoff_hour)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/day-ahead", response_model=DayAheadResponse)
-def get_day_ahead_view(
-    date: str = Query("2026-01-15", description="Delivery date in format YYYY-MM-DD (e.g. 2026-01-15)"),
-    cutoff_hour: int = Query(DEFAULT_CUTOFF_HOUR, description="Cutoff hour on D-1 (default 11 UTC)")
-):
-    try:
-        return analytics_engine.get_day_ahead_view(delivery_date=date, cutoff_hour=cutoff_hour)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/forecast-evolution", response_model=EvolutionSeries)
-def get_forecast_evolution(
-    target_start_time: str = Query(
-        "2026-01-15T12:00:00Z",
-        description="Delivery hour start time in ISO format (e.g. 2026-01-15T12:00:00Z)"
-    )
-):
-    try:
-        return analytics_engine.get_forecast_evolution(target_start_time=target_start_time)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/procurement-simulation", response_model=ProcurementSimResult)
-def simulate_procurement(
-    req: ProcurementSimRequest,
-    cutoff_hour: int = Query(DEFAULT_CUTOFF_HOUR, description="Cutoff hour on D-1")
-):
-    try:
-        return analytics_engine.simulate_procurement(req=req, cutoff_hour=cutoff_hour)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Mount static frontend files if built
-FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
-if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
-
-    @app.get("/")
-    def serve_root():
-        return FileResponse(FRONTEND_DIST / "index.html")
-
-    @app.get("/{full_path:path}")
-    def serve_frontend(full_path: str):
-        file_path = FRONTEND_DIST / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(FRONTEND_DIST / "index.html")
-

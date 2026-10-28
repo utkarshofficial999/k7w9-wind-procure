@@ -1,14 +1,14 @@
-version: '3.8'
-
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: aura-wind-portal
+  backend:
+    build: ./backend
     ports:
-      - "8050:8050"
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
     environment:
-      - PORT=8050
-      - HOST=0.0.0.0
-    restart: unless-stopped
+      - VITE_API_URL=http://localhost:8000
