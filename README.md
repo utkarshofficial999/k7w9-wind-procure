@@ -146,20 +146,28 @@ AI assistance was used during development for code scaffolding, UI iteration, do
 
 ## Deployment
 
-### Vercel (All-in-One Deployment)
+### 1. Backend on Railway
 
-This repository is configured for direct **one-click deployment to Vercel** containing both the React frontend and FastAPI backend serverless functions on a single domain:
+1. Go to [railway.com](https://railway.com) and click **New Project** > **Deploy from GitHub repo**.
+2. Select repository `utkarshofficial999/k7w9-wind-procure`.
+3. In Project Settings:
+   - **Root Directory**: `backend`
+4. In Service Settings > Networking, click **Generate Domain** (e.g. `https://your-wind-backend.up.railway.app`).
+5. Verify health: `https://your-wind-backend.up.railway.app/api/health` returns `{"status":"ok", "service":"wind-market-api"}`.
 
-1. Import this repository into [Vercel](https://vercel.com).
-2. Leave the Root Directory as `./` (default).
-3. Vercel automatically detects the build command (`npm --prefix frontend install && npm --prefix frontend run build`) and uses [`vercel.json`](file:///e:/gb-wind-market-pilot/wind-market-pilot/vercel.json) to route `/api/*` to Python serverless functions.
-4. Click **Deploy**.
+### 2. Frontend on Vercel
 
-No environment variables are required for basic deployment because the frontend automatically routes to `/api` on the same domain.
+1. Go to [vercel.com](https://vercel.com) and click **Add New** > **Project**.
+2. Select repository `utkarshofficial999/k7w9-wind-procure`.
+3. In Project Settings:
+   - **Root Directory**: click Edit and select `frontend`
+   - **Framework Preset**: `Vite` (auto-detected)
+4. Under **Environment Variables**:
+   - Key: `VITE_API_URL`
+   - Value: `https://your-wind-backend.up.railway.app` (your Railway backend domain)
+5. Click **Deploy**.
 
-*Live Application URL:* `[Add your Vercel deployment URL here once deployed]`
-
-### Docker & Container Deployment
+### 3. Docker & Container Deployment (Local or VM)
 
 You can also run both services via Docker Compose locally or on any VM / container host:
 
