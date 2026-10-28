@@ -21,15 +21,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def vercel_path_rewrite(request: Request, call_next):
-    matched_path = request.headers.get("x-matched-path")
-    if matched_path:
-        clean_path = matched_path.split("?")[0]
-        request.scope["path"] = clean_path
-    return await call_next(request)
-
-
 @app.get("/api/health")
 @app.get("/health")
 async def health():
