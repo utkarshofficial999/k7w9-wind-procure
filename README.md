@@ -146,26 +146,21 @@ AI assistance was used during development for code scaffolding, UI iteration, do
 
 ## Deployment
 
-### 1. Backend on Railway
+### 1. Backend on Railway (Live)
 
-1. Go to [railway.com](https://railway.com) and click **New Project** > **Deploy from GitHub repo**.
-2. Select repository `utkarshofficial999/k7w9-wind-procure`.
-3. In Project Settings:
-   - **Root Directory**: `backend`
-4. In Service Settings > Networking, click **Generate Domain** (e.g. `https://your-wind-backend.up.railway.app`).
-5. Verify health: `https://your-wind-backend.up.railway.app/api/health` returns `{"status":"ok", "service":"wind-market-api"}`.
+The FastAPI backend is deployed and running live on Railway:
+- **Base URL**: `https://k7w9-wind-procure-production.up.railway.app`
+- **Health check**: `https://k7w9-wind-procure-production.up.railway.app/api/health`
+- **Interactive API docs**: `https://k7w9-wind-procure-production.up.railway.app/docs`
 
 ### 2. Frontend on Vercel
 
-1. Go to [vercel.com](https://vercel.com) and click **Add New** > **Project**.
+1. Go to [vercel.com/new](https://vercel.com/new).
 2. Select repository `utkarshofficial999/k7w9-wind-procure`.
 3. In Project Settings:
-   - **Root Directory**: click Edit and select `frontend`
+   - **Root Directory**: click **Edit** and select `frontend`
    - **Framework Preset**: `Vite` (auto-detected)
-4. Under **Environment Variables**:
-   - Key: `VITE_API_URL`
-   - Value: `https://your-wind-backend.up.railway.app` (your Railway backend domain)
-5. Click **Deploy**.
+4. Click **Deploy**. (The frontend is pre-configured to default directly to the live Railway backend).
 
 ### 3. Docker & Container Deployment (Local or VM)
 
