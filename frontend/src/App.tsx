@@ -45,7 +45,11 @@ type Response = {
   points: Point[];
 };
 
-const rawApi = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const rawApi =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://k7w9-wind-procure-production.up.railway.app"
+    : "http://localhost:8000");
 const API = rawApi.replace(/\/+$/, "");
 
 function fmt(value: number) {
